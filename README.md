@@ -19,7 +19,11 @@ cp .env.example .env
 | `DB_NAME`     | Nombre de la base de datos                    |
 | `DB_USER`     | Usuario de PostgreSQL                         |
 | `DB_PASSWORD` | Contraseña de PostgreSQL                      |
-| `DB_PORT`     | Puerto expuesto en la máquina host (ej. 5432) |
+| `DB_PORT`     | Puerto expuesto en la máquina host (5438)     |
+
+Se usan puertos no estándar a propósito (`5438` en vez de `5432`, `8088` en vez
+de `8080`) para no chocar con un PostgreSQL o un servidor ya instalados en la
+máquina.
 
 Docker Compose lee ese `.env` automáticamente por estar junto al
 `docker-compose.yml`.
