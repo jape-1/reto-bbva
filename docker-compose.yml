@@ -1,0 +1,25 @@
+# Entorno de desarrollo LOCAL 
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: retobbva-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      # Volumen con nombre: los datos sobreviven a docker compose down.
+      - datos-postgres:/var/lib/postgresql/data
+    healthcheck:
+      # Permite que el servicio de la app espere a la BD con
+      # depends_on: condition: service_healthy cuando se agregue.
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  datos-postgres:
