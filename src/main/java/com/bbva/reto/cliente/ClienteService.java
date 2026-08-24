@@ -2,12 +2,12 @@ package com.bbva.reto.cliente;
 
 import com.bbva.reto.cliente.dto.ClienteRequest;
 import com.bbva.reto.cliente.dto.ClienteResponse;
+import com.bbva.reto.config.RecursoNoEncontradoException;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 
 
 //Logica de negocio del modulo cliente
@@ -66,6 +66,6 @@ public class ClienteService {
 
     private Cliente buscarOFallar(Long id) {
         return clienteRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("No existe el cliente con id " + id));
+                .orElseThrow(() -> new RecursoNoEncontradoException("No existe el cliente con id " + id));
     }
 }
