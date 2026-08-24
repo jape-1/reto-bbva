@@ -26,6 +26,9 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ClienteServiceTest {
 
+    //un solo literal: el fixture y el verify no pueden desalinearse
+    private static final String EMAIL = "ana.torres@banco.pe";
+
     @Mock
     private ClienteRepository clienteRepository;
 
@@ -39,7 +42,7 @@ class ClienteServiceTest {
     @DisplayName("crear guarda el cliente y publica ClienteCreado")
     void crearPublicaElEvento() {
         ClienteRequest solicitud = new ClienteRequest(
-                "Ana", "Torres", "12345678", "ana.torres@banco.pe", "987654321", EstadoCliente.ACTIVO);
+                "Ana", "Torres", "12345678", EMAIL, "987654321", EstadoCliente.ACTIVO);
         when(clienteRepository.save(any(Cliente.class))).thenReturn(clienteGuardado());
 
         ClienteResponse respuesta = clienteService.crear(solicitud);
@@ -47,7 +50,7 @@ class ClienteServiceTest {
         assertThat(respuesta.id()).isEqualTo(1L);
         assertThat(respuesta.estado()).isEqualTo(EstadoCliente.ACTIVO);
         //el modulo cliente no llama a auditoria ni a notificacion, solo publica
-        verify(publicadorDeEventos).publishEvent(new ClienteCreado(1L, "ana@banco.pe"));
+        verify(publicadorDeEventos).publishEvent(new ClienteCreado(1L, EMAIL));
     }
 
     @Test
@@ -81,7 +84,7 @@ class ClienteServiceTest {
                 .nombres("Ana")
                 .apellidos("Torres")
                 .numeroDocumento("12345678")
-                .email("ana.torres@banco.pe")
+                .email(EMAIL)
                 .telefono("987654321")
                 .estado(EstadoCliente.ACTIVO)
                 .build();
