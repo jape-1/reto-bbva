@@ -1,5 +1,5 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:${DB_PORT:5438}/${DB_NAME}
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
+    url: jdbc:postgresql://localhost:${RETO_DB_PORT:5438}/${RETO_DB_NAME}
+    username: ${RETO_DB_USER}
+    password: ${RETO_DB_PASSWORD}
