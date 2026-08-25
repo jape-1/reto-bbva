@@ -3,6 +3,7 @@ package com.bbva.reto.cliente;
 import com.bbva.reto.cliente.dto.ClienteRequest;
 import com.bbva.reto.cliente.dto.ClienteResponse;
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,6 +20,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/clientes")
+@Tag(name = "Clientes", description = "CRUD de clientes bancarios")
 @AllArgsConstructor
 public class ClienteController {
 

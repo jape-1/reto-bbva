@@ -53,6 +53,12 @@ ejecutaría sin llegar a persistir.
 | `DELETE` | `/clientes/{id}`         | `204`                     | Baja lógica: el estado pasa a `ELIMINADO` |
 | `GET`    | `/auditoria/{clienteId}` | `200`                     | Traza de auditoría del cliente            |
 
+### Documentación interactiva
+
+Con la aplicación levantada, Swagger UI queda en `http://localhost:8088/swagger-ui.html` y
+la especificación OpenAPI cruda en `/v3/api-docs`. Los endpoints salen agrupados en
+**Clientes** y **Auditoria**, y se pueden probar desde el navegador sin Postman
+
 ### Modelo
 
 `Cliente`: `id`, `nombres`, `apellidos`, `numeroDocumento`, `email`, `telefono`, `estado`,
@@ -230,6 +236,115 @@ hay que pasarle las variables al proceso (`RETO_DB_NAME`, `RETO_DB_USER`,
 ```bash
 mvn spring-boot:run
 ```
+
+---
+
+## Despliegue en AWS (EC2 + RDS)
+
+```
+GitHub Actions          tu máquina                    AWS
+   build + test    →    docker build     ──scp──▶   EC2 (Docker)
+                                                       │ :8088
+                                                       ▼
+                                                    RDS PostgreSQL :5438
+```
+
+La aplicación corre como contenedor en un EC2 y se conecta a una instancia RDS.
+En producción no se usa `docker-compose`: la base es un servicio gestionado, no un
+contenedor.
+
+### Configuración
+
+El perfil `prod` (`application-prod.yml`) **no declara la conexión**. Llega por las
+variables `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` y
+`SPRING_DATASOURCE_PASSWORD`, que Spring Boot enlaza sin mapeo alguno. Ninguna
+credencial de RDS vive en el repositorio ni queda horneada en la imagen.
+
+Lo que sí define el perfil: pool de Hikari reducido (`db.t3.micro` admite pocas
+conexiones) y nivel de log.
+
+### Red
+
+| Recurso | Configuración |
+|---------|---------------|
+| RDS | Sin acceso público. Puerto `5438` |
+| Security group de RDS | Entrada `Custom TCP 5438` con origen **el security group del EC2**, no una IP |
+| Security group de EC2 | `22` restringido a la IP del desarrollador, `8088` abierto para la demo |
+
+Referenciar el security group en lugar de una IP hace que solo el EC2 alcance la base y
+que la regla siga siendo válida aunque la IP de la instancia cambie.
+
+### Pasos
+
+**1. Preparar el EC2** (Amazon Linux 2023):
+
+```bash
+sudo dnf install -y docker
+sudo systemctl enable --now docker
+sudo usermod -aG docker ec2-user
+```
+
+`t2.micro` tiene 1 GB de RAM: conviene añadir swap antes de arrancar la JVM.
+
+**2. Llevar la imagen.** No se construye en el EC2 — Maven necesita más memoria de la
+que hay. Se construye localmente y se transfiere:
+
+```bash
+docker build -t retobbva:v1 .
+docker save retobbva:v1 | gzip > retobbva.tar.gz
+scp -i clave.pem retobbva.tar.gz ec2-user@<IP_EC2>:~
+
+# en el servidor
+gunzip -c retobbva.tar.gz | docker load
+```
+
+**3. Crear el `.env` en el servidor.** Nunca se commitea ni viaja por el CI:
+
+```bash
+cat > ~/.env <<'VARS'
+SPRING_PROFILES_ACTIVE=prod
+SPRING_DATASOURCE_URL=jdbc:postgresql://<ENDPOINT_RDS>:5438/retobbva
+SPRING_DATASOURCE_USERNAME=reto
+SPRING_DATASOURCE_PASSWORD=***
+VARS
+chmod 600 ~/.env
+```
+
+**4. Arrancar:**
+
+```bash
+docker run -d --name retobbva --restart unless-stopped \
+  --env-file ~/.env \
+  -e JAVA_TOOL_OPTIONS="-Xmx320m" \
+  -p 8088:8088 \
+  retobbva:v1
+```
+
+Flyway aplica las migraciones sobre RDS en el primer arranque: el esquema se construye
+desde cero con las mismas `V1`, `V2` y `V3` que corren en local, sin ejecutar SQL a mano.
+
+**5. Verificar:**
+
+```bash
+curl http://<IP_EC2>:8088/clientes
+```
+
+Swagger UI queda en `http://<IP_EC2>:8088/swagger-ui.html`.
+
+### Por qué el despliegue no está automatizado
+
+El pipeline valida que la imagen construye, pero no la publica: el artefacto que llega al
+servidor se construye en la máquina del desarrollador. Cerrar ese hueco requeriría un
+registry (ECR) y un mecanismo para alcanzar la instancia.
+
+La opción correcta sería un job de despliegue con `needs: build`, publicando en ECR con el
+SHA del commit como tag —inmutable, y por tanto con rollback posible— y disparando el
+`docker pull` por **SSM Run Command** con un rol asumido por OIDC. La alternativa habitual,
+una acción de SSH con la clave privada en los secrets, obliga a abrir el puerto 22 al rango
+de runners de GitHub.
+
+Se dejó manual por alcance: es más infraestructura de la que aporta a un reto de este
+tamaño, no un paso pendiente por olvido.
 
 ---
 

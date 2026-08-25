@@ -1,0 +1,15 @@
+# Perfil de produccion (EC2 + RDS)
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+
+logging:
+  level:
+    root: INFO
+    com.bbva.reto: INFO
+
+springdoc:
+  swagger-ui:
+    enabled: true
